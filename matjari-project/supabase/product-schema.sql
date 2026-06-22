@@ -11,11 +11,14 @@ create table if not exists public.products (
   old_price numeric check (old_price >= 0),
   main_image_url text,
   main_image_path text,
+  additional_images jsonb not null default '[]'::jsonb,
   status text not null default 'active' check (status in ('active', 'draft')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (store_id, slug)
 );
+
+alter table public.products add column if not exists additional_images jsonb not null default '[]'::jsonb;
 
 alter table public.products enable row level security;
 
@@ -203,6 +206,15 @@ create policy "Public can create orders"
 on public.orders
 for insert
 to public
+with check (exists (
+  select 1 from public.products where products.id = orders.product_id and products.status = 'active'
+));
+
+drop policy if exists "Authenticated users can create orders" on public.orders;
+create policy "Authenticated users can create orders"
+on public.orders
+for insert
+to authenticated
 with check (exists (
   select 1 from public.products where products.id = orders.product_id and products.status = 'active'
 ));

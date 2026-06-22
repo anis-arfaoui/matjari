@@ -26,6 +26,10 @@ export function ProductFormPage({ store }) {
   const [status, setStatus] = useState('active')
   const [mainImageFile, setMainImageFile] = useState(null)
   const [mainImagePreview, setMainImagePreview] = useState('')
+  const [existingAdditionalImages, setExistingAdditionalImages] = useState([])
+  const [additionalImageFiles, setAdditionalImageFiles] = useState([])
+  const [additionalImagePreviews, setAdditionalImagePreviews] = useState([])
+  const [removedAdditionalImagePaths, setRemovedAdditionalImagePaths] = useState([])
   const [options, setOptions] = useState([])
   const [variants, setVariants] = useState([])
   const [loading, setLoading] = useState(isEdit)
@@ -53,6 +57,7 @@ export function ProductFormPage({ store }) {
         setOldPrice(product.old_price ?? '')
         setStatus(product.status || 'active')
         setMainImagePreview(product.main_image_url || '')
+        setExistingAdditionalImages(Array.isArray(product.additional_images) ? product.additional_images : [])
 
         const loadedOptions = (product.options || []).map((option) => ({
           id: option.id,
@@ -121,6 +126,38 @@ export function ProductFormPage({ store }) {
 
     setMainImageFile(file)
     setMainImagePreview(URL.createObjectURL(file))
+  }
+
+  function handleAdditionalImagesChange(event) {
+    const files = Array.from(event.target.files || [])
+    const validFiles = []
+    const previews = []
+
+    for (const file of files) {
+      if (!IMAGE_TYPES.includes(file.type)) {
+        setError('Upload PNG, JPG, or WEBP images only.')
+        continue
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        setError('Each image must be smaller than 5 MB.')
+        continue
+      }
+      validFiles.push(file)
+      previews.push(URL.createObjectURL(file))
+    }
+
+    setAdditionalImageFiles((prev) => [...prev, ...validFiles])
+    setAdditionalImagePreviews((prev) => [...prev, ...previews])
+  }
+
+  function removeExistingAdditionalImage(path) {
+    setExistingAdditionalImages((prev) => prev.filter((item) => item.path !== path))
+    setRemovedAdditionalImagePaths((prev) => [...prev, path])
+  }
+
+  function removeNewAdditionalImage(index) {
+    setAdditionalImageFiles((prev) => prev.filter((_, i) => i !== index))
+    setAdditionalImagePreviews((prev) => prev.filter((_, i) => i !== index))
   }
 
   function addOption() {
@@ -268,6 +305,8 @@ export function ProductFormPage({ store }) {
           oldPrice: oldPrice ? Number(oldPrice) : null,
           status,
           mainImageFile,
+          additionalImageFiles,
+          removedAdditionalImagePaths,
         })
         await setProductOptions(productId, cleanOptions)
         await setProductVariants(productId, cleanVariants)
@@ -390,6 +429,67 @@ export function ProductFormPage({ store }) {
                 />
               </label>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-semibold text-slate-900">Additional images</h2>
+          <p className="mb-4 text-xs text-slate-500">
+            Customers can switch between these images on the product page.
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {existingAdditionalImages.map((image) => (
+              <div
+                key={image.path}
+                className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+              >
+                <img
+                  className="h-full w-full object-cover"
+                  src={image.url}
+                  alt=""
+                />
+                <button
+                  className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-red-600 shadow-sm transition hover:bg-white"
+                  type="button"
+                  onClick={() => removeExistingAdditionalImage(image.path)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+
+            {additionalImagePreviews.map((preview, index) => (
+              <div
+                key={preview}
+                className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+              >
+                <img
+                  className="h-full w-full object-cover"
+                  src={preview}
+                  alt=""
+                />
+                <button
+                  className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-red-600 shadow-sm transition hover:bg-white"
+                  type="button"
+                  onClick={() => removeNewAdditionalImage(index)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-center text-sm text-slate-500 transition hover:border-[#0f3d3e] hover:bg-emerald-50/60">
+              <ImagePlus className="mb-2 text-slate-400" size={28} />
+              <span className="text-xs font-medium">Add images</span>
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                onChange={handleAdditionalImagesChange}
+              />
+            </label>
           </div>
         </section>
 

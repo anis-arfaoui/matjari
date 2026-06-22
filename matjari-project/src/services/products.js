@@ -79,10 +79,12 @@ export async function createProduct({
   oldPrice,
   status,
   mainImageFile,
+  additionalImageFiles,
   providedSlug,
 }) {
   const slug = await generateUniqueSlug(storeId, providedSlug || createSlug(title))
   const image = mainImageFile ? await uploadProductImage(mainImageFile) : null
+  const additionalImages = await uploadProductImages(additionalImageFiles || [])
 
   const { data, error } = await supabase
     .from('products')
@@ -95,6 +97,7 @@ export async function createProduct({
       old_price: oldPrice || null,
       main_image_url: image?.url || null,
       main_image_path: image?.path || null,
+      additional_images: additionalImages,
       status,
     })
     .select('*')
@@ -103,6 +106,9 @@ export async function createProduct({
   if (error) {
     if (image?.path) {
       await deleteImageByPath(image.path)
+    }
+    for (const additionalImage of additionalImages) {
+      await deleteImageByPath(additionalImage.path)
     }
     throw error
   }
@@ -120,11 +126,13 @@ export async function updateProduct(
     status,
     mainImageFile,
     removeMainImage,
+    additionalImageFiles,
+    removedAdditionalImagePaths,
   }
 ) {
   const { data: existing } = await supabase
     .from('products')
-    .select('main_image_path')
+    .select('main_image_path, additional_images')
     .eq('id', productId)
     .single()
 
@@ -133,12 +141,22 @@ export async function updateProduct(
     image = await uploadProductImage(mainImageFile)
   }
 
+  const currentAdditionalImages = Array.isArray(existing?.additional_images)
+    ? existing.additional_images
+    : []
+  const keptImages = currentAdditionalImages.filter(
+    (item) => !(removedAdditionalImagePaths || []).includes(item.path)
+  )
+  const newAdditionalImages = await uploadProductImages(additionalImageFiles || [])
+  const additionalImages = [...keptImages, ...newAdditionalImages]
+
   const updateData = {
     title,
     description,
     current_price: currentPrice,
     old_price: oldPrice || null,
     status,
+    additional_images: additionalImages,
   }
 
   if (image) {
@@ -160,6 +178,9 @@ export async function updateProduct(
     if (image?.path) {
       await deleteImageByPath(image.path)
     }
+    for (const additionalImage of newAdditionalImages) {
+      await deleteImageByPath(additionalImage.path)
+    }
     throw error
   }
 
@@ -171,13 +192,17 @@ export async function updateProduct(
     await deleteImageByPath(existing.main_image_path)
   }
 
+  for (const path of removedAdditionalImagePaths || []) {
+    await deleteImageByPath(path)
+  }
+
   return data
 }
 
 export async function deleteProduct(productId) {
   const { data: product } = await supabase
     .from('products')
-    .select('main_image_path')
+    .select('main_image_path, additional_images')
     .eq('id', productId)
     .single()
 
@@ -194,6 +219,12 @@ export async function deleteProduct(productId) {
 
   if (product?.main_image_path) {
     await deleteImageByPath(product.main_image_path)
+  }
+
+  for (const additionalImage of product?.additional_images || []) {
+    if (additionalImage.path) {
+      await deleteImageByPath(additionalImage.path)
+    }
   }
 
   for (const variant of variants || []) {
@@ -406,6 +437,15 @@ export async function getOrderStats(storeId) {
   }
 
   return counts
+}
+
+async function uploadProductImages(files) {
+  const images = []
+  for (const file of files) {
+    const uploaded = await uploadProductImage(file)
+    images.push(uploaded)
+  }
+  return images
 }
 
 export async function uploadProductImage(file) {

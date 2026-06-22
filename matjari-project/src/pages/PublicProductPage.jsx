@@ -13,8 +13,10 @@ export function PublicProductPage() {
   const [variants, setVariants] = useState([])
   const [selectedOptions, setSelectedOptions] = useState({})
   const [quantity, setQuantity] = useState(1)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -81,7 +83,7 @@ export function PublicProductPage() {
         setSelectedOptions(initialSelection)
       } catch (dataError) {
         if (mounted) {
-          setError(dataError.message)
+          setLoadError(dataError.message)
         }
       } finally {
         if (mounted) {
@@ -130,6 +132,26 @@ export function PublicProductPage() {
     return selectedVariant?.image_url || product?.main_image_url
   }, [selectedVariant, product])
 
+  const galleryImages = useMemo(() => {
+    const images = []
+    if (product?.main_image_url) {
+      images.push(product.main_image_url)
+    }
+    for (const item of product?.additional_images || []) {
+      if (item.url) {
+        images.push(item.url)
+      }
+    }
+    return images
+  }, [product])
+
+  const selectedGalleryImage = galleryImages[selectedImageIndex] || displayImage
+
+  const totalPrice = useMemo(() => {
+    const price = displayPrice || 0
+    return price * quantity
+  }, [displayPrice, quantity])
+
   const variantLabel = useMemo(() => {
     if (!selectedVariant || Object.keys(selectedVariant.option_values).length === 0) {
       return ''
@@ -143,11 +165,16 @@ export function PublicProductPage() {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setError('')
+    setFormError('')
     setSuccess(false)
 
     if (!customerName.trim() || !phone.trim() || !wilayaCode || !baladiya) {
-      setError('Please fill in all required fields.')
+      setFormError('Please fill in all required fields.')
+      return
+    }
+
+    if (!isValidAlgerianPhone(phone.trim())) {
+      setFormError('Enter a valid Algerian mobile number: 10 digits starting with 05, 06, or 07.')
       return
     }
 
@@ -167,7 +194,7 @@ export function PublicProductPage() {
       })
       setSuccess(true)
     } catch (submitError) {
-      setError(submitError.message)
+      setFormError(submitError.message)
     } finally {
       setSubmitting(false)
     }
@@ -184,10 +211,13 @@ export function PublicProductPage() {
     )
   }
 
-  if (error) {
+  if (loadError) {
     return (
-      <div className="grid min-h-screen place-items-center bg-white px-4 text-center text-slate-500">
-        <p className="max-w-md">Something went wrong while loading this product.</p>
+      <div className="grid min-h-screen place-items-center bg-white px-4 text-center">
+        <div>
+          <p className="text-lg font-semibold text-slate-900">Something went wrong</p>
+          <p className="mt-2 max-w-md text-sm text-slate-500">{loadError}</p>
+        </div>
       </div>
     )
   }
@@ -242,10 +272,10 @@ export function PublicProductPage() {
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
             <div>
               <div className="aspect-square overflow-hidden rounded-2xl bg-slate-100">
-                {displayImage ? (
+                {selectedGalleryImage ? (
                   <img
                     className="h-full w-full object-cover"
-                    src={displayImage}
+                    src={selectedGalleryImage}
                     alt={product.title}
                   />
                 ) : (
@@ -254,6 +284,30 @@ export function PublicProductPage() {
                   </div>
                 )}
               </div>
+
+              {galleryImages.length > 1 && (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={index}
+                      className={[
+                        'relative shrink-0 overflow-hidden rounded-lg border-2 transition',
+                        index === selectedImageIndex
+                          ? 'border-[#0f3d3e]'
+                          : 'border-transparent hover:border-slate-300',
+                      ].join(' ')}
+                      type="button"
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <img
+                        className="size-16 object-cover"
+                        src={image}
+                        alt=""
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-6">
@@ -339,7 +393,7 @@ export function PublicProductPage() {
                 </div>
               )}
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
 
               <form className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-5" onSubmit={handleSubmit}>
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -443,8 +497,11 @@ export function PublicProductPage() {
                     <p>{product.title}</p>
                     {variantLabel && <p className="text-slate-500">{variantLabel}</p>}
                     <p>Quantity: {quantity}</p>
-                    <p>Price: {formatPrice(displayPrice)}</p>
+                    <p>Unit price: {formatPrice(displayPrice)}</p>
                     <p>Delivery: {deliveryMethod === 'home' ? 'Home delivery' : 'Office pickup'}</p>
+                    <p className="pt-2 text-base font-semibold text-[#0f3d3e]">
+                      Total: {formatPrice(totalPrice)}
+                    </p>
                   </div>
                 </div>
 
@@ -469,6 +526,10 @@ export function PublicProductPage() {
       </footer>
     </div>
   )
+}
+
+function isValidAlgerianPhone(value) {
+  return /^0[5-7][0-9]{8}$/.test(value)
 }
 
 function formatPrice(value) {
