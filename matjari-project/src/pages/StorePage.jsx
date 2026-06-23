@@ -133,6 +133,10 @@ export function StorePage({ onStoreCreated, store, storeLoading, user }) {
             <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
               <StoreDetail label="Store name" value={store.name} />
               <StoreDetail label="Store link" value={store.slug} />
+              <StoreDetail
+                label="Description"
+                value={store.description || 'No description yet'}
+              />
               <StoreDetail label="Created" value={formatDate(store.created_at)} />
             </dl>
           </div>

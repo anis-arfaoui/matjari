@@ -124,7 +124,7 @@ export function PublicStorePage() {
               {store.name}
             </h1>
             <p className="mx-auto mt-4 max-w-lg text-lg text-slate-500">
-              Welcome to our store. We are getting our products ready for you.
+              {store.description || 'Welcome to our store. We are getting our products ready for you.'}
             </p>
             <a
               className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#0f3d3e] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#155153]"

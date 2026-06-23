@@ -5,12 +5,15 @@ create table if not exists public.stores (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
   name text not null check (char_length(name) between 2 and 80),
+  description text,
   slug text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   logo_url text,
   logo_path text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.stores add column if not exists description text;
 
 alter table public.stores enable row level security;
 
@@ -26,6 +29,14 @@ create policy "Users can create their own store"
 on public.stores
 for insert
 to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own store" on public.stores;
+create policy "Users can update their own store"
+on public.stores
+for update
+to authenticated
+using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

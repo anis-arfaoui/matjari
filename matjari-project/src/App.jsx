@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  BarChart3,
   Box,
   ExternalLink,
   Home,
@@ -24,6 +23,7 @@ import { ProductFormPage } from './pages/ProductFormPage'
 import { ProductsPage } from './pages/ProductsPage'
 import { PublicProductPage } from './pages/PublicProductPage'
 import { PublicStorePage } from './pages/PublicStorePage'
+import { SettingsPage } from './pages/SettingsPage'
 import { StorePage } from './pages/StorePage'
 import { getOrderStats } from './services/products'
 import { getMyStore } from './services/stores'
@@ -356,7 +356,7 @@ function AppLayout() {
             <Route path="orders" element={<OrdersPage store={store} />} />
             <Route
               path="settings"
-              element={<PhasePlaceholder type="settings" />}
+              element={<SettingsPage store={store} onStoreUpdated={setStore} />}
             />
           </Routes>
         </main>
@@ -549,29 +549,6 @@ function StatCard({ label, value }) {
     <div className="rounded-lg border border-slate-200 bg-white p-5">
       <p className="text-sm font-medium text-slate-500">{label}</p>
       <p className="mt-3 text-3xl font-semibold">{value}</p>
-    </div>
-  )
-}
-
-function PhasePlaceholder({ type }) {
-  const copy = {
-    store: ['Store Management', 'Create and edit one seller store.'],
-    products: ['Product Management', 'Add products, images, prices, and slugs.'],
-    orders: ['Order Management', 'View orders, filter, and update statuses.'],
-    settings: ['Settings', 'Manage store name, logo, and subdomain.'],
-  }
-  const [title, description] = copy[type]
-
-  return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Upcoming phase" title={title} description={description} />
-      <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-        <BarChart3 className="mx-auto text-slate-300" size={38} />
-        <p className="mx-auto mt-4 max-w-md text-sm text-slate-500">
-          This area is intentionally waiting for its feature phase so the MVP
-          stays simple and testable as it grows.
-        </p>
-      </div>
     </div>
   )
 }
